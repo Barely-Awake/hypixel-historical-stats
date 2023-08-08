@@ -4,7 +4,13 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf ./dist",
+    "build": "npm run clean && tsc",
+    "build:dev": "npm run clean && tsc --watch",
+    "lint": "eslint --fix --ignore-path .gitignore",
+    "lint:check": "eslint --ignore-path .gitignore",
+    "format": "prettier --write . --ignore-path .gitignore",
+    "format:check": "prettier . --check --ignore-path .gitignore"
   },
   "author": "https://github.com/Barely-Awake",
   "license": "ISC",
