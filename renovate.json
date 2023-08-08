@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":automergeMinor",
+    ":automergePr",
+    ":combinePatchMinorReleases",
+    ":disableRateLimiting",
+    "group:allNonMajor",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(build)",
+    ":separateMajorReleases"
+  ],
+  "schedule": ["before 8am on Friday"]
+}
