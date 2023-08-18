@@ -1,0 +1,172 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Historical Stats
+  description: API to provide historical stats after Hypixel's new TOS changes
+tags:
+  - name: write
+    description: Operations that write data therefore require more trust
+  - name: default
+    description: Operations available to regular developers with access to the API
+paths:
+  /players:
+    get:
+      summary: Stats of a player at specified times
+      description: |
+        Provides player stats for the given times in an array ordered from 
+        oldest to youngest.
+      parameters:
+        - in: query
+          name: date
+          description: |
+            The date of stats to fetch. If not provided defaults to latest.
+            "latest" the string can also be provided as an option to fetch 
+            the most recent snapshot.
+            Can also be provided multiple times to get multiple dates from
+            one request.
+          schema:
+            type: array
+            items:
+              type: string
+              default:
+                - latest
+          example:
+            - latest
+            - 0
+      responses:
+        '200':
+          description: player successfully fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoredPlayer'
+    post:
+      tags:
+        - write
+      summary: adds given stats to the database
+      operationId: updatePlayers
+      description: >-
+        Adds the given stats to the database for each player provided. Does not
+        add if that player already has stats
+      requestBody:
+        description: player stats to add
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  timeFetched:
+                    type: string
+                    nullable: false
+                    example: 0
+                  hypixelStats:
+                    $ref: '#/components/schemas/HypixelData'
+      responses:
+        '201':
+          description: players added
+  /players/dates:
+    get:
+      summary: The dates which stats are available to query from a specific player
+      responses:
+        '200':
+          description: dates successfully fetched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uuid:
+                    $ref: '#/components/schemas/uuid'
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                      example: 1691477188035
+components:
+  schemas:
+    Player:
+      type: object
+      properties:
+        uuid:
+          $ref: '#/components/schemas/uuid'
+        formattedName:
+          type: string
+          example: '§b[MVP§8+§b] yourcatboymaid'
+    StoredPlayer:
+      allOf:
+        - $ref: '#/components/schemas/Player'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/StoredData'
+    StoredData:
+      type: object
+      description: |
+        object with keys being dates with stats available 
+        and values being stats stored
+      additionalProperties:
+        type: object
+        properties:
+          rawStats:
+            $ref: '#/components/schemas/HypixelData'
+    HypixelData:
+      description: Raw Hypixel player object
+      type: object
+      required:
+        - uuid
+      properties:
+        uuid:
+          $ref: '#/components/schemas/uuid'
+        displayname:
+          type: string
+          nullable: true
+        rank:
+          type: string
+          nullable: true
+          enum:
+            - ADMIN
+            - MODERATOR
+            - HELPER
+            - NORMAL
+        packageRank:
+          type: string
+          nullable: true
+          enum:
+            - MVP_PLUS
+            - MVP
+            - VIP_PLUS
+            - VIP
+            - NONE
+        newPackageRank:
+          type: string
+          nullable: true
+          enum:
+            - MVP_PLUS
+            - MVP
+            - VIP_PLUS
+            - VIP
+            - NONE
+        monthlyPackageRank:
+          type: string
+          nullable: true
+          enum:
+            - SUPERSTAR
+            - NONE
+        firstLogin:
+          type: number
+          nullable: true
+        lastLogin:
+          type: number
+          nullable: true
+        lastLogout:
+          type: number
+          nullable: true
+        stats:
+          type: object
+          nullable: true
+    uuid:
+      type: string
+      format: uuid
+      example: 3fa85f6457174562b3fc2c963f66afa6
