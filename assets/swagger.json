@@ -16,7 +16,7 @@
     }
   ],
   "paths": {
-    "/player": {
+    "/players": {
       "get": {
         "summary": "Stats of a player at specified times",
         "description": "Provides player stats for the given times in an array ordered from \noldest to youngest.\n",
@@ -60,21 +60,17 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/HypixelData"
+                  "type": "object",
+                  "properties": {
+                    "timeFetched": {
+                      "type": "string",
+                      "nullable": false,
+                      "example": 0
                     },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "timeFetched": {
-                          "type": "string",
-                          "nullable": true,
-                          "example": 0
-                        }
-                      }
+                    "hypixelStats": {
+                      "$ref": "#/components/schemas/HypixelData"
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -87,7 +83,7 @@
         }
       }
     },
-    "/player/dates": {
+    "/players/dates": {
       "get": {
         "summary": "The dates which stats are available to query from a specific player",
         "responses": {
