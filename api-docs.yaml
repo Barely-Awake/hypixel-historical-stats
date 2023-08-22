@@ -17,6 +17,10 @@ paths:
         oldest to youngest.
       parameters:
         - in: query
+          name: uuid
+          schema:
+            $ref: '#/components/schemas/uuid'
+        - in: query
           name: date
           description: |
             The date of stats to fetch. If not provided defaults to latest.
@@ -58,8 +62,11 @@ paths:
                 type: object
                 properties:
                   timeFetched:
+                    description: |
+                      Unix time stamp based on when the player was requested from the Hypixel API.
+                      Defaults to current time if not provided.
                     type: string
-                    nullable: false
+                    nullable: true
                     example: 0
                   hypixelStats:
                     $ref: '#/components/schemas/HypixelData'

@@ -1,17 +1,32 @@
 import express from 'express';
+import mongoose from 'mongoose';
+import * as process from 'process';
 import { indexRouter } from './routes/index.js';
 import { playersRouter } from './routes/players.js';
 
-const app = express();
+import 'dotenv/config';
 
-app.use('/', indexRouter);
+startMongo();
+startExpress();
 
-app.use('/players', playersRouter);
+function startMongo() {
+  mongoose.connect(process.env.MONGO_URI || '', {
+    dbName: 'historical-stats',
+  });
+}
 
-app.use((req, res) => {
-  res.status(404).send('404 Not Found');
-});
+function startExpress() {
+  const app = express();
 
-app.listen(3000, () => {
-  console.log(`Listening on port ${3000}`);
-});
+  app.use('/', indexRouter);
+
+  app.use('/players', playersRouter);
+
+  app.use((req, res) => {
+    res.sendStatus(404);
+  });
+
+  app.listen(3000, () => {
+    console.log(`Listening on port ${3000}`);
+  });
+}
