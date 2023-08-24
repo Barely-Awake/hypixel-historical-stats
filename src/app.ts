@@ -1,22 +1,23 @@
+import 'dotenv/config';
 import express from 'express';
-import mongoose from 'mongoose';
+import { connect } from 'mongoose';
 import * as process from 'process';
 import { indexRouter } from './routes/index.js';
 import { playersRouter } from './routes/players.js';
-
-import 'dotenv/config';
 
 startMongo();
 startExpress();
 
 function startMongo() {
-  mongoose.connect(process.env.MONGO_URI || '', {
+  connect(process.env.MONGO_URI || '', {
     dbName: 'historical-stats',
   });
 }
 
 function startExpress() {
   const app = express();
+
+  app.use(express.json({ limit: '500mb' }));
 
   app.use('/', indexRouter);
 

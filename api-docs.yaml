@@ -13,8 +13,7 @@ paths:
     get:
       summary: Stats of a player at specified times
       description: |
-        Provides player stats for the given times in an array ordered from 
-        oldest to youngest.
+        Provides player stats for the given times in an unsorted array
       parameters:
         - in: query
           name: uuid
@@ -23,7 +22,7 @@ paths:
         - in: query
           name: date
           description: |
-            The date of stats to fetch. If not provided defaults to latest.
+            The (query) date of stats to fetch. If not provided defaults to latest.
             "latest" the string can also be provided as an option to fetch 
             the most recent snapshot.
             Can also be provided multiple times to get multiple dates from
@@ -31,7 +30,7 @@ paths:
           schema:
             type: array
             items:
-              type: string
+              type: number
               default:
                 - latest
           example:
@@ -49,9 +48,8 @@ paths:
         - write
       summary: adds given stats to the database
       operationId: updatePlayers
-      description: >-
-        Adds the given stats to the database for each player provided. Does not
-        add if that player already has stats
+      description: |
+        Adds the given stats to the database for each player provided
       requestBody:
         description: player stats to add
         content:
@@ -61,13 +59,11 @@ paths:
               items:
                 type: object
                 properties:
-                  timeFetched:
+                  queriedAt:
                     description: |
-                      Unix time stamp based on when the player was requested from the Hypixel API.
-                      Defaults to current time if not provided.
-                    type: string
-                    nullable: true
-                    example: 0
+                      Unix time stamp of when the player was requested from the Hypixel API
+                    type: number
+                    example: 1691477188035
                   hypixelStats:
                     $ref: '#/components/schemas/HypixelData'
       responses:
@@ -75,7 +71,7 @@ paths:
           description: players added
   /players/dates:
     get:
-      summary: The dates which stats are available to query from a specific player
+      summary: The dates which stats are available to query from a specific player. Dates are based off of `queriedAt` times
       responses:
         '200':
           description: dates successfully fetched
@@ -89,7 +85,7 @@ paths:
                   dates:
                     type: array
                     items:
-                      type: string
+                      type: number
                       example: 1691477188035
 components:
   schemas:
@@ -98,9 +94,6 @@ components:
       properties:
         uuid:
           $ref: '#/components/schemas/uuid'
-        formattedName:
-          type: string
-          example: '§b[MVP§8+§b] yourcatboymaid'
     StoredPlayer:
       allOf:
         - $ref: '#/components/schemas/Player'
@@ -109,15 +102,20 @@ components:
             data:
               $ref: '#/components/schemas/StoredData'
     StoredData:
-      type: object
+      type: array
       description: |
-        object with keys being dates with stats available 
-        and values being stats stored
-      additionalProperties:
+        Array of stat snapshots with receivedAt and queriedAt times available
+      items:
         type: object
         properties:
           rawStats:
             $ref: '#/components/schemas/HypixelData'
+          receivedAt:
+            type: number
+            example: 1691477188035
+          queriedAt:
+            type: number
+            example: 1691476066035
     HypixelData:
       description: Raw Hypixel player object
       type: object
