@@ -1,6 +1,7 @@
 .env
 node_modules
 dist/
+assets/swagger.json
 
 # Created by https://www.toptal.com/developers/gitignore/api/webstorm
 # Edit at https://www.toptal.com/developers/gitignore?templates=webstorm

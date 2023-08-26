@@ -63,6 +63,7 @@ paths:
                     description: |
                       Unix time stamp of when the player was requested from the Hypixel API
                     type: number
+                    nullable: true
                     example: 1691477188035
                   hypixelStats:
                     $ref: '#/components/schemas/HypixelData'
