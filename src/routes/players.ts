@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Player } from '../models/player.js';
-import { Snapshot } from '../models/snapshots.js';
-import { PlayerUpdates } from '../types/api.js';
+import { ISnapshot, Snapshot } from '../models/snapshots.js';
+import { PlayerUpdate, PlayerUpdates } from '../types/api.js';
 
 export const playersRouter = Router();
 
@@ -22,20 +22,32 @@ playersRouter.post('/', async (req, res) => {
     return res.sendStatus(400);
   }
 
-  res.sendStatus(202);
+  const snapshots: (Document<unknown, {}, ISnapshot> &
+    ISnapshot & { _id: Types.ObjectId })[] = [];
 
-  const snapshots = updates.map(
-    (player) =>
+  for (let i = 0; i < updates.length; i++) {
+    const player = updates[i];
+
+    const playerStatus = validatePlayer(player);
+    if (!playerStatus.valid) {
+      res.status(playerStatus.code).send({
+        error: playerStatus.reason,
+      });
+      return;
+    }
+
+    snapshots.push(
       new Snapshot({
         _id: new Types.ObjectId(),
         rawStats: player.hypixelStats,
-      }),
-  );
+      })
+    );
+  }
 
   Snapshot.insertMany(snapshots);
 
   const playerUpdates = updates.map((player, index) => {
-    const {hypixelStats} = player;
+    const { hypixelStats } = player;
 
     return {
       updateOne: {
@@ -47,7 +59,7 @@ playersRouter.post('/', async (req, res) => {
             data: {
               snapshotId: snapshots[index]._id,
               receivedAt: receivedAt,
-              queriedAt: Number(player.queriedAt) ?? undefined,
+              queriedAt: Number(player.queriedAt) ?? receivedAt,
             },
           },
         },
@@ -57,7 +69,41 @@ playersRouter.post('/', async (req, res) => {
   });
 
   await Player.bulkWrite(playerUpdates);
+
+  res.sendStatus(202);
 });
+
+function validatePlayer(player: PlayerUpdate): PlayerValid | PlayerInvalid {
+  if (
+    !player.hypixelStats ||
+    typeof player.hypixelStats !== 'object' ||
+    typeof player.hypixelStats.uuid !== 'string'
+  ) {
+    return {
+      valid: false,
+      reason: 'required property "hypixelStats" missing',
+      code: 400,
+    };
+  }
+
+  return {
+    valid: true,
+    reason: null,
+    code: null,
+  };
+}
+
+interface PlayerValid {
+  valid: true;
+  reason: null;
+  code: null;
+}
+
+interface PlayerInvalid {
+  valid: false;
+  reason: string;
+  code: number;
+}
 
 playersRouter.get('/dates', (req, res) => {
   res.sendStatus(404);
