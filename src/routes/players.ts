@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Document, Types } from 'mongoose';
-import { Player } from '../models/player.js';
+import { cleanUuid, Player } from '../models/player.js';
 import { ISnapshot, Snapshot } from '../models/snapshots.js';
 import { PlayerUpdate, PlayerUpdates } from '../types/api.js';
 
@@ -11,7 +11,7 @@ playersRouter.get('/', (req, res) => {
 });
 
 playersRouter.post('/', async (req, res) => {
-  const updates: PlayerUpdates = req.body;
+  const updates: PlayerUpdates | unknown = req.body;
   const receivedAt = Date.now();
 
   if (!updates || !Array.isArray(updates)) {
@@ -31,7 +31,7 @@ playersRouter.post('/', async (req, res) => {
     const playerStatus = validatePlayer(player);
     if (!playerStatus.valid) {
       res.status(playerStatus.code).send({
-        error: playerStatus.reason,
+        error: `${playerStatus.reason} (index ${i})`,
       });
       return;
     }
@@ -73,15 +73,39 @@ playersRouter.post('/', async (req, res) => {
   res.sendStatus(202);
 });
 
-function validatePlayer(player: PlayerUpdate): PlayerValid | PlayerInvalid {
+function validatePlayer(
+  player: PlayerUpdate | unknown
+): PlayerValid | PlayerInvalid {
+  if (!player || typeof player !== 'object') {
+    return {
+      valid: false,
+      reason: 'invalid player provided',
+      code: 400,
+    };
+  }
+
   if (
-    !player.hypixelStats ||
+    !('hypixelStats' in player) ||
     typeof player.hypixelStats !== 'object' ||
-    typeof player.hypixelStats.uuid !== 'string'
+    !player.hypixelStats
   ) {
     return {
       valid: false,
       reason: 'required property "hypixelStats" missing',
+      code: 400,
+    };
+  }
+
+  const { hypixelStats } = player;
+
+  if (
+    !('uuid' in hypixelStats) ||
+    typeof hypixelStats.uuid !== 'string' ||
+    !isUuid(hypixelStats.uuid)
+  ) {
+    return {
+      valid: false,
+      reason: 'player has invalid uuid',
       code: 400,
     };
   }
@@ -105,6 +129,39 @@ interface PlayerInvalid {
   code: number;
 }
 
-playersRouter.get('/dates', (req, res) => {
-  res.sendStatus(404);
+playersRouter.get('/dates', async (req, res) => {
+  const uuid = req.query.uuid;
+
+  if (typeof uuid !== 'string' || !isUuid(uuid)) {
+    res.sendStatus(400);
+    return;
+  }
+
+  const [dates] = await Player.aggregate()
+    .option({
+      allowDiskUse: true,
+    })
+    .match({
+      uuid: cleanUuid(uuid),
+    })
+    .limit(1)
+    .project({
+      _id: 0,
+      uuid: 1,
+      dates: {
+        $map: {
+          input: '$data',
+          in: '$$this.receivedAt',
+        },
+      },
+    })
+    .exec();
+
+  res.status(200).send(dates);
 });
+
+export function isUuid(uuid: string) {
+  const uuidRegex =
+    /^[0-9A-F]{8}-?[0-9A-F]{4}-?4[0-9A-F]{3}-?[89AB][0-9A-F]{3}-?[0-9A-F]{12}$/i;
+  return uuidRegex.test(uuid);
+}

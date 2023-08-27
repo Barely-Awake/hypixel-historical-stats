@@ -17,6 +17,7 @@ const playerSchema = new Schema<IPlayer>(
     uuid: {
       type: String,
       required: true,
+      unique: true,
       set: cleanUuid,
     },
     data: [

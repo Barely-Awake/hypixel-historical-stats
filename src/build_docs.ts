@@ -8,4 +8,4 @@ async function convertYaml() {
   await writeFile('./assets/swagger.json', JSON.stringify(json, null, 2));
 }
 
-convertYaml()
+convertYaml();

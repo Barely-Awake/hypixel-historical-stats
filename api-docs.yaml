@@ -73,6 +73,11 @@ paths:
   /players/dates:
     get:
       summary: The dates which stats are available to query from a specific player. Dates are based off of `queriedAt` times
+      parameters:
+        - in: query
+          name: uuid
+          schema:
+            $ref: '#/components/schemas/uuid'
       responses:
         '200':
           description: dates successfully fetched
