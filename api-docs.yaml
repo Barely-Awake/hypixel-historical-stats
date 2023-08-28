@@ -58,7 +58,8 @@ paths:
                 properties:
                   queriedAt:
                     description: |
-                      Unix time stamp of when the player was requested from the Hypixel API
+                      Unix time stamp of when the player was requested from the Hypixel API.
+                      Optional, but encouraged if you are waiting to send bulk data every hour for example.
                     type: number
                     nullable: true
                     example: 1691477188035
