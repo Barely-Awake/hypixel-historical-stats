@@ -3,38 +3,34 @@ info:
   version: 1.0.0
   title: Historical Stats
   description: API to provide historical stats after Hypixel's new TOS changes
-tags:
-  - name: write
-    description: Operations that write data therefore require more trust
-  - name: default
-    description: Operations available to regular developers with access to the API
 paths:
   /players:
     get:
       summary: Stats of a player at specified times
+      security:
+        - UserApiKey: []
+        - WriteApiKey: []
       description: |
         Provides player stats for the given times in an unsorted array
       parameters:
         - in: query
           name: uuid
+          required: true
           schema:
             $ref: '#/components/schemas/uuid'
         - in: query
           name: date
+          required: true
           description: |
-            The (query) date of stats to fetch. If not provided defaults to latest.
-            "latest" the string can also be provided as an option to fetch 
-            the most recent snapshot.
+            The (query) date of stats to fetch.
             Can also be provided multiple times to get multiple dates from
             one request.
           schema:
             type: array
             items:
               type: number
-              default:
-                - latest
           example:
-            - latest
+            - 1
             - 0
       responses:
         '200':
@@ -44,9 +40,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/StoredPlayer'
     post:
-      tags:
-        - write
       summary: adds given stats to the database
+      security:
+        - UserApiKey: []
+        - WriteApiKey: []
       operationId: updatePlayers
       description: |
         Adds the given stats to the database for each player provided
@@ -73,9 +70,13 @@ paths:
   /players/dates:
     get:
       summary: The dates which stats are available to query from a specific player. Dates are based off of `queriedAt` times
+      security:
+        - UserApiKey: []
+        - WriteApiKey: []
       parameters:
         - in: query
           name: uuid
+          required: true
           schema:
             $ref: '#/components/schemas/uuid'
       responses:
@@ -94,6 +95,17 @@ paths:
                       type: number
                       example: 1691477188035
 components:
+  securitySchemes:
+    UserApiKey:
+      type: apiKey
+      in: header
+      name: API-Key
+      description: Obtained by joining the [Historical Stats Discord](https://discord.gg/wX8RJxZZZ8) and running the `/apikey` command
+    WriteApiKey:
+      type: apiKey
+      in: header
+      name: API-Key
+      description: Obtained by joining the [Historical Stats Discord](https://discord.gg/wX8RJxZZZ8) and talking to `@barelyawake`
   schemas:
     Player:
       type: object

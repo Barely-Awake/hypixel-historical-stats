@@ -6,8 +6,79 @@ import { PlayerUpdate, PlayerUpdates } from '../types/api.js';
 
 export const playersRouter = Router();
 
-playersRouter.get('/', (req, res) => {
-  res.sendStatus(404);
+playersRouter.get('/', async (req, res) => {
+  // Separated due to TypeScript checking reasons (https://github.com/microsoft/TypeScript/issues/9998)
+  const { uuid } = req.query;
+  let { date: dates } = req.query;
+
+  if (typeof uuid !== 'string') {
+    res.sendStatus(400);
+    return;
+  }
+
+  if (!isUuid(uuid)) {
+    res.sendStatus(400);
+    return;
+  }
+
+  if (!dates || (typeof dates !== 'string' && !Array.isArray(dates))) {
+    res.sendStatus(400);
+    return;
+  }
+
+  if (!Array.isArray(dates)) {
+    dates = [dates];
+  }
+
+  const parsedDates: number[] = [];
+
+  for (let i = 0; i < dates.length; i++) {
+    const date = dates[i];
+    if (typeof date !== 'string' || !Number(date)) {
+      console.log(typeof date);
+      res.sendStatus(400);
+      return;
+    }
+
+    parsedDates[i] = Number(date);
+  }
+
+  const [snapshotInfo] = await Player.aggregate()
+    .allowDiskUse(true)
+    .match({ uuid: cleanUuid(uuid) })
+    .limit(1)
+    .project({
+      _id: 0,
+      uuid: 1,
+      data: {
+        $filter: {
+          input: '$data',
+          cond: {
+            $in: ['$$this.queriedAt', parsedDates],
+          },
+        },
+      },
+    })
+    .exec();
+
+  const snapshotData = await Snapshot.find({
+    _id: {
+      $in: snapshotInfo.data.map((data: any) => data.snapshotId),
+    },
+  });
+
+  snapshotInfo.data = snapshotInfo.data.map((data: any) => {
+    return {
+      receivedAt: data.receivedAt,
+      queriedAt: data.queriedAt,
+      rawStats: snapshotData.find(
+        (snapshotData) =>
+          snapshotData._id.toHexString() === data.snapshotId.toHexString()
+      )?.rawStats,
+    };
+  });
+
+  res.send(snapshotInfo);
 });
 
 playersRouter.post('/', async (req, res) => {
@@ -59,7 +130,7 @@ playersRouter.post('/', async (req, res) => {
             data: {
               snapshotId: snapshots[index]._id,
               receivedAt: receivedAt,
-              queriedAt: Number(player.queriedAt) ?? receivedAt,
+              queriedAt: player.queriedAt || receivedAt,
             },
           },
         },
@@ -130,7 +201,7 @@ interface PlayerInvalid {
 }
 
 playersRouter.get('/dates', async (req, res) => {
-  const uuid = req.query.uuid;
+  const { uuid } = req.query;
 
   if (typeof uuid !== 'string' || !isUuid(uuid)) {
     res.sendStatus(400);
@@ -138,9 +209,7 @@ playersRouter.get('/dates', async (req, res) => {
   }
 
   const [dates] = await Player.aggregate()
-    .option({
-      allowDiskUse: true,
-    })
+    .allowDiskUse(true)
     .match({
       uuid: cleanUuid(uuid),
     })
@@ -151,7 +220,7 @@ playersRouter.get('/dates', async (req, res) => {
       dates: {
         $map: {
           input: '$data',
-          in: '$$this.receivedAt',
+          in: '$$this.queriedAt',
         },
       },
     })
