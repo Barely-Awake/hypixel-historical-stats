@@ -42,7 +42,6 @@ paths:
     post:
       summary: adds given stats to the database
       security:
-        - UserApiKey: []
         - WriteApiKey: []
       operationId: updatePlayers
       description: |
