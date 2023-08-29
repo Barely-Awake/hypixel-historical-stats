@@ -6,8 +6,8 @@ import { availableParallelism } from 'os';
 import { indexRouter } from './routes/index.js';
 import { playersRouter } from './routes/players.js';
 
-process.on("unhandledRejection", console.warn);
-process.on("uncaughtException", console.warn);
+process.on('unhandledRejection', console.warn);
+process.on('uncaughtException', console.warn);
 
 if (
   cluster.isPrimary &&
