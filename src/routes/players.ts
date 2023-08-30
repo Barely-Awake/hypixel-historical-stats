@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { Document, Types } from 'mongoose';
+import { authCheck } from '../middleware/auth.js';
 import { cleanUuid, Player } from '../models/player.js';
 import { ISnapshot, Snapshot } from '../models/snapshots.js';
 import { PlayerUpdate, PlayerUpdates } from '../types/api.js';
 
 export const playersRouter = Router();
 
-playersRouter.get('/', async (req, res) => {
+playersRouter.get('/', authCheck(), async (req, res) => {
   // Separated due to TypeScript checking reasons (https://github.com/microsoft/TypeScript/issues/9998)
   const { uuid } = req.query;
   let { date: dates } = req.query;
@@ -81,68 +82,74 @@ playersRouter.get('/', async (req, res) => {
   res.send(snapshotInfo);
 });
 
-playersRouter.post('/', async (req, res) => {
-  const updates: PlayerUpdates | unknown = req.body;
-  const receivedAt = Date.now();
+playersRouter.post(
+  '/',
+  authCheck({
+    requirePermissions: ['write'],
+  }),
+  async (req, res) => {
+    const updates: PlayerUpdates | unknown = req.body;
+    const receivedAt = Date.now();
 
-  if (!updates || !Array.isArray(updates)) {
-    return res.sendStatus(400);
-  }
-
-  if (updates.length <= 0) {
-    return res.sendStatus(400);
-  }
-
-  const snapshots: (Document<unknown, {}, ISnapshot> &
-    ISnapshot & { _id: Types.ObjectId })[] = [];
-
-  for (let i = 0; i < updates.length; i++) {
-    const player = updates[i];
-
-    const playerStatus = validatePlayer(player);
-    if (!playerStatus.valid) {
-      res.status(playerStatus.code).send({
-        error: `${playerStatus.reason} (index ${i})`,
-      });
-      return;
+    if (!updates || !Array.isArray(updates)) {
+      return res.sendStatus(400);
     }
 
-    snapshots.push(
-      new Snapshot({
-        _id: new Types.ObjectId(),
-        rawStats: player.hypixelStats,
-      })
-    );
-  }
+    if (updates.length <= 0) {
+      return res.sendStatus(400);
+    }
 
-  Snapshot.insertMany(snapshots);
+    const snapshots: (Document<unknown, {}, ISnapshot> &
+      ISnapshot & { _id: Types.ObjectId })[] = [];
 
-  const playerUpdates = updates.map((player, index) => {
-    const { hypixelStats } = player;
+    for (let i = 0; i < updates.length; i++) {
+      const player = updates[i];
 
-    return {
-      updateOne: {
-        filter: {
-          uuid: hypixelStats.uuid,
-        },
-        update: {
-          $push: {
-            data: {
-              snapshotId: snapshots[index]._id,
-              receivedAt: receivedAt,
-              queriedAt: player.queriedAt || receivedAt,
+      const playerStatus = validatePlayer(player);
+      if (!playerStatus.valid) {
+        res.status(playerStatus.code).send({
+          error: `${playerStatus.reason} (index ${i})`,
+        });
+        return;
+      }
+
+      snapshots.push(
+        new Snapshot({
+          _id: new Types.ObjectId(),
+          rawStats: player.hypixelStats,
+        })
+      );
+    }
+
+    Snapshot.insertMany(snapshots);
+
+    const playerUpdates = updates.map((player, index) => {
+      const { hypixelStats } = player;
+
+      return {
+        updateOne: {
+          filter: {
+            uuid: hypixelStats.uuid,
+          },
+          update: {
+            $push: {
+              data: {
+                snapshotId: snapshots[index]._id,
+                receivedAt: receivedAt,
+                queriedAt: player.queriedAt || receivedAt,
+              },
             },
           },
+          upsert: true,
         },
-        upsert: true,
-      },
-    };
-  });
+      };
+    });
 
-  await Player.bulkWrite(playerUpdates);
+    await Player.bulkWrite(playerUpdates);
 
-  res.sendStatus(202);
-});
+    res.sendStatus(202);
+  }
+);
 
 function validatePlayer(
   player: PlayerUpdate | unknown
@@ -200,7 +207,7 @@ interface PlayerInvalid {
   code: number;
 }
 
-playersRouter.get('/dates', async (req, res) => {
+playersRouter.get('/dates', authCheck(), async (req, res) => {
   const { uuid } = req.query;
 
   if (typeof uuid !== 'string' || !isUuid(uuid)) {
