@@ -3,6 +3,8 @@ import 'dotenv/config';
 import express from 'express';
 import { connect } from 'mongoose';
 import { availableParallelism } from 'os';
+import { ExpressServer, SlashCreator } from 'slash-create';
+import ApiKeyCommand from './discord/api_key.js';
 import { indexRouter } from './routes/index.js';
 import { playersRouter } from './routes/players.js';
 
@@ -37,6 +39,11 @@ function startMongo() {
 }
 
 function startExpress() {
+  const creator = new SlashCreator({
+    applicationID: process.env.DISCORD_CLIENT_ID ?? '',
+    publicKey: process.env.DISCORD_PUBLIC_KEY ?? '',
+    token: process.env.DISCORD_TOKEN ?? '',
+  });
   const app = express();
 
   app.use(express.json({ limit: '500mb' }));
@@ -45,11 +52,26 @@ function startExpress() {
 
   app.use('/players', playersRouter);
 
-  app.use((req, res) => {
-    res.sendStatus(404);
-  });
-
   app.listen(3000, () => {
     console.log(`Listening on port ${3000}`);
   });
+
+  creator
+    .withServer(
+      new ExpressServer(app, {
+        alreadyListening: true,
+      })
+    )
+    .registerCommand(ApiKeyCommand)
+    .syncCommands()
+    .on('commandError', (command, err, ctx) => {
+      console.log(
+        `Error running command ${command.commandName}.\nError:\n`,
+        err,
+        '\nContext:\n',
+        ctx,
+        'Command:\n',
+        command
+      );
+    });
 }
