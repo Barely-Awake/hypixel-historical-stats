@@ -232,6 +232,7 @@ playersRouter.get('/dates', authCheck(), async (req, res) => {
       },
     })
     .exec();
+  console.log(dates);
 
   res.status(200).send(dates);
 });
