@@ -9,8 +9,8 @@ export const playersRouter = Router();
 
 playersRouter.get('/', authCheck(), async (req, res) => {
   // Separated due to TypeScript checking reasons (https://github.com/microsoft/TypeScript/issues/9998)
-  const { uuid } = req.query;
-  let { date: dates } = req.query;
+  const {uuid} = req.query;
+  let {date: dates} = req.query;
 
   if (typeof uuid !== 'string') {
     res.sendStatus(400);
@@ -46,7 +46,7 @@ playersRouter.get('/', authCheck(), async (req, res) => {
 
   const [snapshotInfo] = await Player.aggregate()
     .allowDiskUse(true)
-    .match({ uuid: cleanUuid(uuid) })
+    .match({uuid: cleanUuid(uuid)})
     .limit(1)
     .project({
       _id: 0,
@@ -74,7 +74,7 @@ playersRouter.get('/', authCheck(), async (req, res) => {
       queriedAt: data.queriedAt,
       rawStats: snapshotData.find(
         (snapshotData) =>
-          snapshotData._id.toHexString() === data.snapshotId.toHexString()
+          snapshotData._id.toHexString() === data.snapshotId.toHexString(),
       )?.rawStats,
     };
   });
@@ -117,14 +117,14 @@ playersRouter.post(
         new Snapshot({
           _id: new Types.ObjectId(),
           rawStats: player.hypixelStats,
-        })
+        }),
       );
     }
 
     Snapshot.insertMany(snapshots);
 
     const playerUpdates = updates.map((player, index) => {
-      const { hypixelStats } = player;
+      const {hypixelStats} = player;
 
       return {
         updateOne: {
@@ -148,11 +148,11 @@ playersRouter.post(
     await Player.bulkWrite(playerUpdates);
 
     res.sendStatus(202);
-  }
+  },
 );
 
 function validatePlayer(
-  player: PlayerUpdate | unknown
+  player: PlayerUpdate | unknown,
 ): PlayerValid | PlayerInvalid {
   if (!player || typeof player !== 'object') {
     return {
@@ -174,7 +174,7 @@ function validatePlayer(
     };
   }
 
-  const { hypixelStats } = player;
+  const {hypixelStats} = player;
 
   if (
     !('uuid' in hypixelStats) ||
@@ -208,7 +208,7 @@ interface PlayerInvalid {
 }
 
 playersRouter.get('/dates', authCheck(), async (req, res) => {
-  const { uuid } = req.query;
+  const {uuid} = req.query;
 
   if (typeof uuid !== 'string' || !isUuid(uuid)) {
     res.sendStatus(400);
@@ -232,6 +232,15 @@ playersRouter.get('/dates', authCheck(), async (req, res) => {
       },
     })
     .exec();
+
+  if (!dates) {
+    res.status(200).send({
+      uuid: uuid,
+      dates: [],
+    });
+    return;
+  }
+
   console.log(dates);
 
   res.status(200).send(dates);
