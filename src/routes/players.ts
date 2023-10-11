@@ -88,7 +88,6 @@ playersRouter.post(
     requirePermissions: ['write'],
   }),
   async (req, res) => {
-    return res.sendStatus(500);
     const updates: PlayerUpdates | unknown = req.body;
     const receivedAt = Date.now();
 
