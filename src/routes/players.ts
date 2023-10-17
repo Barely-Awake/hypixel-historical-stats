@@ -36,7 +36,6 @@ playersRouter.get('/', authCheck(), async (req, res) => {
   for (let i = 0; i < dates.length; i++) {
     const date = dates[i];
     if (typeof date !== 'string' || !Number(date)) {
-      console.log(typeof date);
       res.sendStatus(400);
       return;
     }
@@ -242,8 +241,6 @@ playersRouter.get('/dates', authCheck(), async (req, res) => {
     });
     return;
   }
-
-  console.log(dates);
 
   res.status(200).send(dates);
 });
