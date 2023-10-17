@@ -4,13 +4,12 @@ import { authCheck } from '../middleware/auth.js';
 import { cleanUuid, Player } from '../models/player.js';
 import { ISnapshot, Snapshot } from '../models/snapshots.js';
 import { PlayerUpdate, PlayerUpdates } from '../types/api.js';
+import { ApiData } from '../types/player.js';
 
 export const playersRouter = Router();
 
 playersRouter.get('/', authCheck(), async (req, res) => {
-  // Separated due to TypeScript checking reasons (https://github.com/microsoft/TypeScript/issues/9998)
-  const {uuid} = req.query;
-  let {date: dates} = req.query;
+  let {date: dates, uuid} = req.query;
 
   if (typeof uuid !== 'string') {
     res.sendStatus(400);
@@ -21,6 +20,8 @@ playersRouter.get('/', authCheck(), async (req, res) => {
     res.sendStatus(400);
     return;
   }
+
+  uuid = cleanUuid(uuid);
 
   if (!dates || (typeof dates !== 'string' && !Array.isArray(dates))) {
     res.sendStatus(400);
@@ -43,39 +44,24 @@ playersRouter.get('/', authCheck(), async (req, res) => {
     parsedDates[i] = Number(date);
   }
 
-  const [snapshotInfo] = await Player.aggregate()
-    .allowDiskUse(true)
-    .match({uuid: cleanUuid(uuid)})
-    .limit(1)
-    .project({
-      _id: 0,
-      uuid: 1,
-      data: {
-        $filter: {
-          input: '$data',
-          cond: {
-            $in: ['$$this.queriedAt', parsedDates],
-          },
-        },
-      },
-    })
-    .exec();
-
-  const snapshotData = await Snapshot.find({
-    _id: {
-      $in: snapshotInfo.data.map((data: any) => data.snapshotId),
+  const snapshots = await Snapshot.find({
+    'rawStats.uuid': uuid,
+    queriedAt: {
+      $in: parsedDates,
     },
-  });
+  }).exec();
 
-  snapshotInfo.data = snapshotInfo.data.map((data: any) => {
-    return {
-      receivedAt: data.receivedAt,
-      queriedAt: data.queriedAt,
-      rawStats: snapshotData.find(
-        (snapshotData) =>
-          snapshotData._id.toHexString() === data.snapshotId.toHexString(),
-      )?.rawStats,
-    };
+  const snapshotInfo: { uuid: string; data: { rawStats: ApiData; receivedAt: number; queriedAt: number }[] } = {
+    uuid: uuid,
+    data: [],
+  };
+
+  snapshots.forEach((snapshot) => {
+    snapshotInfo.data.push({
+      receivedAt: snapshot.receivedAt,
+      queriedAt: snapshot.queriedAt,
+      rawStats: snapshot.rawStats,
+    });
   });
 
   res.send(snapshotInfo);
