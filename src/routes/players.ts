@@ -116,6 +116,8 @@ playersRouter.post(
       snapshots.push(
         new Snapshot({
           _id: new Types.ObjectId(),
+          receivedAt: receivedAt,
+          queriedAt: player.queriedAt || receivedAt,
           rawStats: player.hypixelStats,
         }),
       );
